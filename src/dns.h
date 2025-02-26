@@ -27,6 +27,7 @@ typedef struct DnsQuestion {
 typedef enum Record {
     TYPE_A = 1,
     TYPE_NS,
+    TYPE_CNAME = 5,
 } Record;
 
 typedef enum Class_ {

@@ -138,7 +138,7 @@ DnsRecord parse_record(u8 *bytes, usize *read) {
     datalen = ntohs(datalen);
 
     u8 *data = NULL;
-    if (type == TYPE_NS) {
+    if (type == TYPE_NS || type == TYPE_CNAME) {
         data = parse_dns_name(bytes, read, NULL);
     } else if (type == TYPE_A) {
         struct in_addr addr;

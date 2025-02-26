@@ -142,11 +142,11 @@ DnsPacket send_query(char *ip_addr, char *domain_name, Record type) {
     return parse_dns_packet(response);
 }
 
-char *get_answer(DnsPacket packet) {
+char *get_answer(DnsPacket packet, Record type) {
     Vec answers = packet.answers;
     for (usize i = 0; i < vec_len(answers); i++) {
         DnsRecord *record = vec_get(answers, i);
-        if (record->type == TYPE_A) {
+        if (record->type == type) {
             return (char *)record->data;
         }
     }
@@ -154,11 +154,11 @@ char *get_answer(DnsPacket packet) {
     return NULL;
 }
 
-char *get_nameserver_ip(DnsPacket packet) {
+char *get_additional(DnsPacket packet, Record type) {
     Vec additionals = packet.additionals;
     for (usize i = 0; i < vec_len(additionals); i++) {
         DnsRecord *record = vec_get(additionals, i);
-        if (record->type == TYPE_A) {
+        if (record->type == type) {
             return (char *)record->data;
         }
     }
@@ -166,11 +166,11 @@ char *get_nameserver_ip(DnsPacket packet) {
     return NULL;
 }
 
-char *get_nameserver(DnsPacket packet) {
+char *get_authority(DnsPacket packet, Record type) {
     Vec authorities = packet.authorities;
     for (usize i = 0; i < vec_len(authorities); i++) {
         DnsRecord *record = vec_get(authorities, i);
-        if (record->type == TYPE_NS) {
+        if (record->type == type) {
             return (char *)record->data;
         }
     }
@@ -184,20 +184,25 @@ char *resolve(char *domain_name, Record type) {
     for (;;) {
         printf("Querying %s for %s\n", nameserver, domain_name);
         DnsPacket response = send_query(nameserver, domain_name, type);
-        char *ip = get_answer(response);
-        char *nsip = get_nameserver_ip(response);
-        char *nsdomain = get_nameserver(response);
         free(nameserver);
 
-        if (ip) {
+        char *ip, *nsip, *nsdomain, *canname;
+        if ((ip = get_answer(response, TYPE_A))) {
             ip = strdup(ip);
             packet_del(response);
             return ip;
-        } else if (nsip) {
+        } else if ((nsip = get_additional(response, TYPE_A))) {
             nameserver = strdup(nsip);
-        } else if (nsdomain) {
+        } else if ((nsdomain = get_authority(response, TYPE_NS))) {
             nameserver = resolve(nsdomain, TYPE_A);
+        } else if ((canname = get_answer(response, TYPE_CNAME))) {
+            canname = strdup(canname);
+            packet_del(response);
+            ip = resolve(canname, type);
+            free(canname);
+            return ip;
         } else {
+            packet_del(response);
             break;
         }
 
