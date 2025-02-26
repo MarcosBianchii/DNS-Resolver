@@ -3,7 +3,6 @@
 
 #include "ints.h"
 #include "vec.h"
-#include <stdlib.h>
 
 Vec split(char *string, char *sep);
 u8 *join(Vec v, char *sep, usize *size);

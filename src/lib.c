@@ -1,14 +1,8 @@
 #include "lib.h"
-#include "dns.h"
-#include "ints.h"
 #include "utils.h"
-#include "vec.h"
 #include <arpa/inet.h>
-#include <netinet/in.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <sys/socket.h>
 #include <unistd.h>
 
 u8 *build_query(char *domain_name, Record type, usize *size) {

@@ -3,7 +3,6 @@
 
 #include "ints.h"
 #include "vec.h"
-#include <stdlib.h>
 
 #define HDR_SIZE (12 * sizeof(u8))
 

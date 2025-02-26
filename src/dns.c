@@ -1,11 +1,7 @@
 #include "dns.h"
-#include "ints.h"
 #include "utils.h"
-#include "vec.h"
 #include <arpa/inet.h>
-#include <linux/limits.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <string.h>
 
 u8 *header_to_bytes(DnsHeader h) {
