@@ -5,6 +5,8 @@
 #include "vec.h"
 
 #define HDR_SIZE (12 * sizeof(u8))
+#define MAX_DOMAINNAME_OCTETS 255
+#define MAX_COMPRESSION_PTRS ((1 << 7) - 2)
 
 typedef struct DnsHeader {
     u16 id;

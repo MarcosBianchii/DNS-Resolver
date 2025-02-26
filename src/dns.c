@@ -60,7 +60,11 @@ DnsHeader parse_header(u8 *bytes, usize *read) {
     };
 }
 
-u8 *parse_dns_name(u8 *bytes, usize *read, usize *namelen) {
+u8 *parse_dns_name(u8 *bytes, usize *read, usize *namelen, usize jumps) {
+    if (jumps > MAX_COMPRESSION_PTRS) {
+        return NULL;
+    }
+
     Vec parts = vec_new();
     bool jumped = false;
 
@@ -70,7 +74,7 @@ u8 *parse_dns_name(u8 *bytes, usize *read, usize *namelen) {
         u8 *part = NULL;
         if (len & 0xC0) {
             usize ptr = ((len & 0x3F) << 8) | bytes[(*read)];
-            part = parse_dns_name(bytes, &ptr, NULL);
+            part = parse_dns_name(bytes, &ptr, NULL, jumps + 1);
             jumped = true;
         } else {
             part = (u8 *)strndup((char *)&bytes[*read], len);
@@ -93,7 +97,10 @@ u8 *parse_dns_name(u8 *bytes, usize *read, usize *namelen) {
 
 DnsQuestion parse_question(u8 *bytes, usize *read) {
     usize namelen = 0;
-    u8 *name = parse_dns_name(bytes, read, &namelen);
+    u8 *name = parse_dns_name(bytes, read, &namelen, 0);
+    if (!name) {
+        return (DnsQuestion){0};
+    }
 
     u16 type;
     memcpy(&type, &bytes[*read], sizeof(type));
@@ -115,7 +122,10 @@ DnsQuestion parse_question(u8 *bytes, usize *read) {
 
 DnsRecord parse_record(u8 *bytes, usize *read) {
     usize namelen = 0;
-    u8 *name = parse_dns_name(bytes, read, &namelen);
+    u8 *name = parse_dns_name(bytes, read, &namelen, 0);
+    if (!name) {
+        return (DnsRecord){0};
+    }
 
     u16 type;
     memcpy(&type, &bytes[*read], sizeof(type));
@@ -139,7 +149,7 @@ DnsRecord parse_record(u8 *bytes, usize *read) {
 
     u8 *data = NULL;
     if (type == TYPE_NS || type == TYPE_CNAME) {
-        data = parse_dns_name(bytes, read, NULL);
+        data = parse_dns_name(bytes, read, NULL, 0);
     } else if (type == TYPE_A) {
         struct in_addr addr;
         memcpy(&addr, &bytes[*read], sizeof(addr));
@@ -154,6 +164,10 @@ DnsRecord parse_record(u8 *bytes, usize *read) {
 
         memcpy(data, &bytes[*read], datalen);
         *read += datalen;
+    }
+
+    if (!data) {
+        return (DnsRecord){0};
     }
 
     return (DnsRecord){
