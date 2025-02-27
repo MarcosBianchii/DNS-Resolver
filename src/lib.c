@@ -1,4 +1,5 @@
 #include "lib.h"
+#include "lru.h"
 #include "utils.h"
 #include <arpa/inet.h>
 #include <stdio.h>
@@ -178,36 +179,38 @@ char *get_authority(DnsPacket packet, Record type) {
     return NULL;
 }
 
-char *resolve(char *domain_name, Record type) {
-    char *nameserver = strdup("198.41.0.4");
+char *resolve(char *domain_name, Record type, LruCache *cache) {
+    char *lookup = lru_get(cache, domain_name);
+    if (lookup) {
+        return lookup;
+    }
 
+    char *nameserver = strdup("198.41.0.4");
+    char *ip, *nsip, *nsdomain, *canname;
     for (;;) {
-        printf("Querying %s for %s\n", nameserver, domain_name);
+        printf("Querying: %-15s for %s\n", nameserver, domain_name);
         DnsPacket response = send_query(nameserver, domain_name, type);
         free(nameserver);
 
-        char *ip, *nsip, *nsdomain, *canname;
         if ((ip = get_answer(response, TYPE_A))) {
-            ip = strdup(ip);
+            lru_push(cache, domain_name, ip);
             packet_del(response);
-            return ip;
+            return lru_get(cache, domain_name);
         } else if ((nsip = get_additional(response, TYPE_A))) {
             nameserver = strdup(nsip);
         } else if ((nsdomain = get_authority(response, TYPE_NS))) {
-            nameserver = resolve(nsdomain, TYPE_A);
+            nameserver = resolve(nsdomain, TYPE_A, cache);
         } else if ((canname = get_answer(response, TYPE_CNAME))) {
             canname = strdup(canname);
             packet_del(response);
-            ip = resolve(canname, type);
+            ip = resolve(canname, type, cache);
             free(canname);
             return ip;
         } else {
             packet_del(response);
-            break;
+            return NULL;
         }
 
         packet_del(response);
     }
-
-    return NULL;
 }

@@ -1,23 +1,58 @@
 #include "dns.h"
 #include "lib.h"
+#include "lru.h"
 #include <stdio.h>
+#include <string.h>
 #include <time.h>
 
 int main(int argc, char *argv[]) {
-    if (argc < 2) {
-        fprintf(stderr, "use: %s <domain_name>\n", argv[0]);
+    usize cache_size = 128;
+
+    if (argc > 2) {
+        int size = atoi(argv[1]);
+        if (size < 2) {
+            fprintf(stderr, "invalid cache size");
+            return 1;
+        }
+
+        cache_size = (usize)size;
+    }
+
+    LruCache cache = lru_new(cache_size);
+    char *line = malloc(64 * sizeof(char));
+    if (!line) {
+        lru_del(&cache);
         return 1;
     }
 
     srand(time(NULL));
-    char *domain_name = argv[1];
-    char *ip = resolve(domain_name, TYPE_A);
-    if (!ip) {
-        fprintf(stderr, "couldn't resolve query\n");
-        return 1;
+    isize nread = 0;
+    usize n = 128;
+    for (;;) {
+        printf("domain> ");
+        nread = getline(&line, &n, stdin);
+        line[nread - 1] = '\0';
+
+        if (strcmp(line, "quit") == 0) {
+            break;
+        }
+
+        char *ip = lru_get(&cache, line);
+        if (!ip) {
+            ip = resolve(line, TYPE_A, &cache);
+            lru_push(&cache, line, ip);
+        }
+
+        if (ip) {
+            printf("%s\n", ip);
+        } else {
+            fprintf(stderr, "couldn't resolve query for %s\n", line);
+        }
+
+        puts("");
     }
 
-    puts(ip);
-    free(ip);
+    free(line);
+    lru_del(&cache);
     return 0;
 }
