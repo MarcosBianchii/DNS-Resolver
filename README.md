@@ -4,6 +4,6 @@ Implementation of a simple DNS resolver following this tutorial: https://impleme
 
 ## Use
 ```bash
-./main <domain_name>
+./main [cache_size]
 ```
 
